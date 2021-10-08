@@ -2,7 +2,10 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use rtic_syntax::{ast::App, Context};
+use rtic_syntax::{
+    ast::{App, LocalResource},
+    Context,
+};
 use syn::{Attribute, Ident, LitInt, PatType};
 
 use crate::check::Extra;
@@ -274,4 +277,17 @@ pub fn rt_err_ident() -> Ident {
         &"you_must_enable_the_rt_feature_for_the_pac_in_your_cargo_toml",
         Span::call_site(),
     )
+}
+
+pub fn get_task_probe_resource<'a>(
+    ctxt: Context,
+    app: &'a App,
+) -> Option<(&'a Ident, &'a LocalResource)> {
+    let probe = match ctxt {
+        Context::Init => &app.init.probe,
+        Context::Idle => &app.idle.as_ref().unwrap().probe,
+        Context::HardwareTask(ident) => &app.hardware_tasks[ident].probe,
+        Context::SoftwareTask(ident) => &app.software_tasks[ident].probe,
+    };
+    probe.as_ref().map(|p| p.probe_local_resource())
 }

@@ -44,8 +44,31 @@ pub fn codegen(
         ));
     }
 
+    // ModalityProbe resources
+    for (task_name, name, res) in app.modality_probe_local_resources().iter() {
+        let cfgs = &res.cfgs;
+        let ty = &res.ty;
+        let mangled_name = util::declared_static_local_resource_ident(name, task_name);
+        let attrs = &res.attrs;
+        let section = util::link_section_uninit();
+        mod_app.push(quote!(
+            #[allow(non_camel_case_types)]
+            #[allow(non_upper_case_globals)]
+            // #[doc = #doc]
+            #[doc(hidden)]
+            #(#attrs)*
+            #(#cfgs)*
+            #section
+            static #mangled_name: rtic::RacyCell<core::mem::MaybeUninit<#ty>> = rtic::RacyCell::new(core::mem::MaybeUninit::uninit());
+        ));
+    }
+
     // All declared `local = [NAME: TY = EXPR]` local resources
-    for (task_name, resource_name, task_local) in app.declared_local_resources() {
+    for (task_name, resource_name, task_local) in app
+        .declared_local_resources()
+        .iter()
+        .chain(app.modality_probe_storage_resources().iter())
+    {
         let cfgs = &task_local.cfgs;
         let ty = &task_local.ty;
         let expr = &task_local.expr;

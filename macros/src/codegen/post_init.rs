@@ -45,6 +45,27 @@ pub fn codegen(app: &App, analysis: &Analysis) -> Vec<TokenStream2> {
         }
     }
 
+    // Initialize ModalityProbe resources
+    for (task_name, probe) in app.modality_probes().iter() {
+        let mangled_storage_name =
+            util::declared_static_local_resource_ident(&probe.storage_name, task_name);
+        let mangled_probe_name =
+            util::declared_static_local_resource_ident(&probe.local_name, task_name);
+        let probe_id_const =
+            syn::Ident::new(&probe.name.to_string().to_uppercase(), Span::call_site());
+        stmts.push(quote!(
+            #mangled_probe_name.get_mut_unchecked().as_mut_ptr().write(
+                    modality_probe_sys::ModalityProbe::new_with_storage(
+                        #mangled_storage_name.get_mut_unchecked(),
+                        #probe_id_const,
+                        modality_probe_sys::NanosecondResolution::UNSPECIFIED,
+                        modality_probe_sys::WallClockId::LOCAL_ONLY,
+                        None,
+                    ).expect("Failed to initialize ModalityProbe")
+                );
+        ));
+    }
+
     for (i, (monotonic, _)) in app.monotonics.iter().enumerate() {
         // For future use
         // let doc = format!(" RTIC internal: {}:{}", file!(), line!());

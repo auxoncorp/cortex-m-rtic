@@ -68,6 +68,27 @@ pub fn codegen(ctxt: Context, needs_lt: &mut bool, app: &App) -> (TokenStream2, 
         ));
     }
 
+    if let Some((name, task_local)) = util::get_task_probe_resource(ctxt, app) {
+        let cfgs = &task_local.cfgs;
+        let ty = &task_local.ty;
+        let lt = if ctxt.runs_once() {
+            quote!('static)
+        } else {
+            lt = Some(quote!('a));
+            quote!('a)
+        };
+        let mangled_name = util::declared_static_local_resource_ident(name, &task_name);
+        fields.push(quote!(
+            #(#cfgs)*
+            pub #name: &#lt mut #ty
+        ));
+        let expr = quote!(&mut *#mangled_name.get_mut_unchecked().as_mut_ptr());
+        values.push(quote!(
+            #(#cfgs)*
+            #name: #expr
+        ));
+    }
+
     if lt.is_some() {
         *needs_lt = true;
 

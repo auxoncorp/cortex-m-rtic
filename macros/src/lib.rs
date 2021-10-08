@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 
 extern crate proc_macro;
 
@@ -10,6 +10,7 @@ use rtic_syntax::Settings;
 mod analyze;
 mod check;
 mod codegen;
+mod modality_probe;
 #[cfg(test)]
 mod tests;
 

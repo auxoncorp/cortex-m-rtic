@@ -2,7 +2,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use rtic_syntax::ast::App;
 
-use crate::{analyze::Analysis, check::Extra};
+use crate::{analyze::Analysis, check::Extra, modality_probe};
 
 mod assertions;
 mod dispatchers;
@@ -25,6 +25,8 @@ pub fn app(app: &App, analysis: &Analysis, extra: &Extra) -> TokenStream2 {
     let mut mains = vec![];
     let mut root = vec![];
     let mut user = vec![];
+
+    let modality_component_defs = modality_probe::manifest_gen(app);
 
     // Generate the `main` function
     let assertion_stmts = assertions::codegen(app, analysis);
@@ -168,6 +170,15 @@ pub fn app(app: &App, analysis: &Analysis, extra: &Extra) -> TokenStream2 {
     quote!(
         /// The RTIC application module
         pub mod #name {
+            use modality_probe_sys::*;
+
+            #[allow(unused_imports)]
+            mod generated_modality_componenet_definitions {
+                use modality_probe_sys::modality_probe;
+                #modality_component_defs
+            }
+            use generated_modality_componenet_definitions::*;
+
             /// Always include the device crate which contains the vector table
             use #device as #rt_err;
 
