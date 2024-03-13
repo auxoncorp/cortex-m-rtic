@@ -1,4 +1,8 @@
-use crate::{analyze::Analysis, check::Extra, codegen::util};
+use crate::{
+    analyze::Analysis,
+    check::Extra,
+    codegen::{tracing, util},
+};
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use rtic_syntax::{ast::App, Context};
@@ -208,6 +212,7 @@ pub fn codegen(
         let cfgs = &spawnee.cfgs;
         let (args, tupled, untupled, ty) = util::regroup_inputs(&spawnee.inputs);
         let args = &args;
+        let arg_cnt = untupled.len() as u8;
         let tupled = &tupled;
         let fq = util::fq_ident(name);
         let rq = util::rq_ident(priority);
@@ -223,6 +228,10 @@ pub fn codegen(
 
         let internal_spawn_ident = util::internal_task_ident(name, "spawn");
 
+        let tp_task_spawn = tracing::tp_task_spawn(device, &enum_, name, interrupt, arg_cnt);
+        let tp_task_spawn_failed =
+            tracing::tp_task_spawn_failed(device, &enum_, name, interrupt, arg_cnt);
+
         // Spawn caller
         items.push(quote!(
 
@@ -233,6 +242,8 @@ pub fn codegen(
 
             unsafe {
                 if let Some(index) = rtic::export::interrupt::free(|_| (&mut *#fq.get_mut()).dequeue()) {
+                    #tp_task_spawn
+
                     (&mut *#inputs
                         .get_mut())
                         .get_unchecked_mut(usize::from(index))
@@ -247,6 +258,7 @@ pub fn codegen(
 
                     Ok(())
                 } else {
+                    #tp_task_spawn_failed
                     Err(input)
                 }
             }
@@ -272,6 +284,13 @@ pub fn codegen(
             let m_isr = &monotonic.args.binds;
             let enum_ = util::interrupt_ident();
             let spawn_handle_string = format!("{}::SpawnHandle", m);
+
+            let tp_task_cancel = tracing::tp_task_cancel(name);
+            let tp_task_reschedule_after = tracing::tp_task_reschedule_after(name);
+            let tp_task_reschedule_at = tracing::tp_task_reschedule_at(name);
+            let tp_task_spawn_after = tracing::tp_task_spawn_after(name);
+            let tp_task_spawn_at = tracing::tp_task_spawn_at(name, arg_cnt);
+            let tp_task_spawn_at_failed = tracing::tp_task_spawn_at_failed(name, arg_cnt);
 
             let (enable_interrupt, pend) = if &*m_isr.to_string() == "SysTick" {
                 (
@@ -338,6 +357,7 @@ pub fn codegen(
                 #(#cfgs)*
                 impl #internal_spawn_handle_ident {
                     pub fn cancel(self) -> Result<#ty, ()> {
+                        #tp_task_cancel
                         rtic::export::interrupt::free(|_| unsafe {
                             let tq = &mut *#tq.get_mut();
                             if let Some((_task, index)) = tq.cancel_marker(self.marker) {
@@ -364,6 +384,7 @@ pub fn codegen(
                         self,
                         duration: <#m as rtic::Monotonic>::Duration
                     ) -> Result<Self, ()> {
+                        #tp_task_reschedule_after
                         self.reschedule_at(monotonics::#m::now() + duration)
                     }
 
@@ -373,6 +394,7 @@ pub fn codegen(
                         self,
                         instant: <#m as rtic::Monotonic>::Instant
                     ) -> Result<Self, ()> {
+                        #tp_task_reschedule_at
                         rtic::export::interrupt::free(|_| unsafe {
                             let marker = #tq_marker.get().read();
                             #tq_marker.get_mut().write(marker.wrapping_add(1));
@@ -396,7 +418,7 @@ pub fn codegen(
                 ) -> Result<#name::#m::SpawnHandle, #ty>
                 {
                     let instant = monotonics::#m::now();
-
+                    #tp_task_spawn_after
                     #internal_spawn_at_ident(instant + duration #(,#untupled)*)
                 }
 
@@ -410,6 +432,7 @@ pub fn codegen(
                     unsafe {
                         let input = #tupled;
                         if let Some(index) = rtic::export::interrupt::free(|_| (&mut *#fq.get_mut()).dequeue()) {
+                            #tp_task_spawn_at
                             (&mut *#inputs
                                 .get_mut())
                                 .get_unchecked_mut(usize::from(index))
@@ -444,6 +467,7 @@ pub fn codegen(
                                 Ok(#name::#m::SpawnHandle { marker })
                             })
                         } else {
+                            #tp_task_spawn_at_failed
                             Err(input)
                         }
                     }

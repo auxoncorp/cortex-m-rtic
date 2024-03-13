@@ -18,6 +18,7 @@ mod shared_resources;
 mod shared_resources_struct;
 mod software_tasks;
 mod timer_queue;
+mod tracing;
 mod util;
 
 #[allow(clippy::too_many_lines)]

@@ -5,6 +5,7 @@ use rtic_syntax::{ast::App, Context};
 use crate::{
     analyze::Analysis,
     check::Extra,
+    codegen::tracing,
     codegen::{local_resources_struct, module},
 };
 
@@ -105,7 +106,10 @@ pub fn codegen(app: &App, analysis: &Analysis, extra: &Extra) -> CodegenResult {
         mod_app = Some(constructor);
     }
 
+    let tp_trace_start = tracing::tp_trace_start(name);
+
     let call_init = quote! {
+        #tp_trace_start
         let (shared_resources, local_resources, mut monotonics) = #name(#name::Context::new(core.into()));
     };
 

@@ -5,7 +5,7 @@ use rtic_syntax::{ast::App, Context};
 use crate::{
     analyze::Analysis,
     check::Extra,
-    codegen::{local_resources_struct, module, shared_resources_struct},
+    codegen::{local_resources_struct, module, shared_resources_struct, tracing},
 };
 
 /// Generate support code for hardware tasks (`#[exception]`s and `#[interrupt]`s)
@@ -27,6 +27,7 @@ pub fn codegen(
     let mut mod_app = vec![];
     let mut root = vec![];
     let mut user_tasks = vec![];
+    let device = &extra.device;
 
     for (name, task) in &app.hardware_tasks {
         let symbol = task.args.binds.clone();
@@ -34,6 +35,10 @@ pub fn codegen(
         let cfgs = &task.cfgs;
         let attrs = &task.attrs;
         let user_hardware_task_isr_doc = &format!(" User HW task ISR trampoline for {name}");
+        let tp_int_enter = tracing::tp_interrupt_enter(device, priority, &symbol);
+        let tp_int_exit = tracing::tp_interrupt_exit();
+        let tp_task_enter = tracing::tp_hw_task_enter(name, priority, &symbol);
+        let tp_task_exit = tracing::tp_task_exit();
 
         mod_app.push(quote!(
             #[allow(non_snake_case)]
@@ -43,12 +48,15 @@ pub fn codegen(
             #(#cfgs)*
             unsafe fn #symbol() {
                 const PRIORITY: u8 = #priority;
-
+                #tp_int_enter
                 rtic::export::run(PRIORITY, || {
+                    #tp_task_enter
                     #name(
                         #name::Context::new(&rtic::export::Priority::new(PRIORITY))
-                    )
+                    );
+                    #tp_task_exit
                 });
+                #tp_int_exit
             }
         ));
 

@@ -2,10 +2,14 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 use rtic_syntax::ast::App;
 
-use crate::{analyze::Analysis, check::Extra, codegen::util};
+use crate::{
+    analyze::Analysis,
+    check::Extra,
+    codegen::{tracing, util},
+};
 
 /// Generates task dispatchers
-pub fn codegen(app: &App, analysis: &Analysis, _extra: &Extra) -> Vec<TokenStream2> {
+pub fn codegen(app: &App, analysis: &Analysis, extra: &Extra) -> Vec<TokenStream2> {
     let mut items = vec![];
 
     let interrupts = &analysis.interrupts;
@@ -64,6 +68,9 @@ pub fn codegen(app: &App, analysis: &Analysis, _extra: &Extra) -> Vec<TokenStrea
             static #rq: rtic::RacyCell<#rq_ty> = rtic::RacyCell::new(#rq_expr);
         ));
 
+        let interrupt = util::suffixed(&interrupts[&level].0.to_string());
+        let attribute = &interrupts[&level].1.attrs;
+
         let arms = channel
             .tasks
             .iter()
@@ -73,6 +80,9 @@ pub fn codegen(app: &App, analysis: &Analysis, _extra: &Extra) -> Vec<TokenStrea
                 let fq = util::fq_ident(name);
                 let inputs = util::inputs_ident(name);
                 let (_, tupled, pats, _) = util::regroup_inputs(&task.inputs);
+                let arg_cnt = pats.len() as u8;
+                let tp_task_enter = tracing::tp_sw_task_enter(name, level, &interrupt, arg_cnt);
+                let tp_task_exit = tracing::tp_task_exit();
 
                 quote!(
                     #(#cfgs)*
@@ -85,10 +95,12 @@ pub fn codegen(app: &App, analysis: &Analysis, _extra: &Extra) -> Vec<TokenStrea
                             .read();
                         (&mut *#fq.get_mut()).split().0.enqueue_unchecked(index);
                         let priority = &rtic::export::Priority::new(PRIORITY);
+                        #tp_task_enter
                         #name(
                             #name::Context::new(priority)
                             #(,#pats)*
-                        )
+                        );
+                        #tp_task_exit
                     }
                 )
             })
@@ -103,8 +115,9 @@ pub fn codegen(app: &App, analysis: &Analysis, _extra: &Extra) -> Vec<TokenStrea
         ));
 
         let doc = format!("Interrupt handler to dispatch tasks at priority {}", level);
-        let interrupt = util::suffixed(&interrupts[&level].0.to_string());
-        let attribute = &interrupts[&level].1.attrs;
+        let device = &extra.device;
+        let tp_int_enter = tracing::tp_interrupt_enter(device, level, &interrupt);
+        let tp_int_exit = tracing::tp_interrupt_exit();
         items.push(quote!(
             #[allow(non_snake_case)]
             #[doc = #doc]
@@ -113,10 +126,11 @@ pub fn codegen(app: &App, analysis: &Analysis, _extra: &Extra) -> Vec<TokenStrea
             unsafe fn #interrupt() {
                 /// The priority of this interrupt handler
                 const PRIORITY: u8 = #level;
-
+                #tp_int_enter
                 rtic::export::run(PRIORITY, || {
                     #(#stmts)*
                 });
+                #tp_int_exit
             }
         ));
     }

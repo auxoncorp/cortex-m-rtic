@@ -5,7 +5,7 @@ use rtic_syntax::{ast::App, Context};
 use crate::{
     analyze::Analysis,
     check::Extra,
-    codegen::{local_resources_struct, module, shared_resources_struct},
+    codegen::{local_resources_struct, module, shared_resources_struct, tracing},
 };
 
 /// Generates support code for `#[idle]` functions
@@ -76,8 +76,11 @@ pub fn codegen(
             }
         ));
 
-        let call_idle = quote!(#name(
-            #name::Context::new(&rtic::export::Priority::new(0))
+        let tp_task_enter = tracing::tp_idle_task_enter(name);
+
+        let call_idle = quote!(
+            #tp_task_enter
+            #name(#name::Context::new(&rtic::export::Priority::new(0))
         ));
 
         (mod_app, root_idle, user_idle, call_idle)
