@@ -87,6 +87,7 @@ pub fn tp_task_spawn_failed(
     )
 }
 
+#[cfg(feature = "tracing-include-scheduling-ticks")]
 pub fn tp_task_spawn_after(task: &Ident) -> TokenStream2 {
     let fmt_str = format!("AUXON_TASK_SPAWN_AFTER::task={task},instant={{=u64}},duration={{=u64}}");
     quote!(
@@ -94,6 +95,15 @@ pub fn tp_task_spawn_after(task: &Ident) -> TokenStream2 {
     )
 }
 
+#[cfg(not(feature = "tracing-include-scheduling-ticks"))]
+pub fn tp_task_spawn_after(task: &Ident) -> TokenStream2 {
+    let fmt_str = format!("AUXON_TASK_SPAWN_AFTER::task={task}");
+    quote!(
+        defmt::trace!(#fmt_str);
+    )
+}
+
+#[cfg(feature = "tracing-include-scheduling-ticks")]
 pub fn tp_task_spawn_at(task: &Ident, arg_cnt: u8) -> TokenStream2 {
     let fmt_str = format!("AUXON_TASK_SPAWN_AT::task={task},instant={{=u64}},arg_cnt={arg_cnt}");
     quote!(
@@ -101,11 +111,28 @@ pub fn tp_task_spawn_at(task: &Ident, arg_cnt: u8) -> TokenStream2 {
     )
 }
 
+#[cfg(not(feature = "tracing-include-scheduling-ticks"))]
+pub fn tp_task_spawn_at(task: &Ident, arg_cnt: u8) -> TokenStream2 {
+    let fmt_str = format!("AUXON_TASK_SPAWN_AT::task={task},arg_cnt={arg_cnt}");
+    quote!(
+        defmt::trace!(#fmt_str);
+    )
+}
+
+#[cfg(feature = "tracing-include-scheduling-ticks")]
 pub fn tp_task_spawn_at_failed(task: &Ident, arg_cnt: u8) -> TokenStream2 {
     let fmt_str =
         format!("AUXON_TASK_SPAWN_AT_FAILED::task={task},instant={{=u64}},arg_cnt={arg_cnt}");
     quote!(
         defmt::trace!(#fmt_str, instant.ticks());
+    )
+}
+
+#[cfg(not(feature = "tracing-include-scheduling-ticks"))]
+pub fn tp_task_spawn_at_failed(task: &Ident, arg_cnt: u8) -> TokenStream2 {
+    let fmt_str = format!("AUXON_TASK_SPAWN_AT_FAILED::task={task},arg_cnt={arg_cnt}");
+    quote!(
+        defmt::trace!(#fmt_str);
     )
 }
 
@@ -116,6 +143,7 @@ pub fn tp_task_cancel(task: &Ident) -> TokenStream2 {
     )
 }
 
+#[cfg(feature = "tracing-include-scheduling-ticks")]
 pub fn tp_task_reschedule_after(task: &Ident) -> TokenStream2 {
     let fmt_str = format!("AUXON_TASK_RESCHEDULE_AFTER::task={task},duration={{=u64}}");
     quote!(
@@ -123,9 +151,26 @@ pub fn tp_task_reschedule_after(task: &Ident) -> TokenStream2 {
     )
 }
 
+#[cfg(not(feature = "tracing-include-scheduling-ticks"))]
+pub fn tp_task_reschedule_after(task: &Ident) -> TokenStream2 {
+    let fmt_str = format!("AUXON_TASK_RESCHEDULE_AFTER::task={task}");
+    quote!(
+        defmt::trace!(#fmt_str);
+    )
+}
+
+#[cfg(feature = "tracing-include-scheduling-ticks")]
 pub fn tp_task_reschedule_at(task: &Ident) -> TokenStream2 {
     let fmt_str = format!("AUXON_TASK_RESCHEDULE_AT::task={task},instant={{=u64}}");
     quote!(
         defmt::trace!(#fmt_str, instant.ticks());
+    )
+}
+
+#[cfg(not(feature = "tracing-include-scheduling-ticks"))]
+pub fn tp_task_reschedule_at(task: &Ident) -> TokenStream2 {
+    let fmt_str = format!("AUXON_TASK_RESCHEDULE_AT::task={task}");
+    quote!(
+        defmt::trace!(#fmt_str);
     )
 }

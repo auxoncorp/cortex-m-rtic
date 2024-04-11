@@ -73,6 +73,8 @@ lm3s6965 = { git = "https://github.com/japaric/lm3s6965" }
 
 [features]
 test-critical-section = ["cortex-m/critical-section-single-core"]
+tracing-include-scheduling-ticks = ["cortex-m-rtic-macros/tracing-include-scheduling-ticks"]
+default = ["tracing-include-scheduling-ticks"]
 
 [[example]]
 name = "pool"

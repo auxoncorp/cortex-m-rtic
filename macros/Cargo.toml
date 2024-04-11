@@ -26,3 +26,4 @@ rtic-syntax = "1.0.3"
 
 [features]
 debugprint = []
+tracing-include-scheduling-ticks = []
