@@ -38,9 +38,9 @@ pub fn tp_sw_task_enter(
     dispatcher: &Ident,
     arg_cnt: u8,
 ) -> TokenStream2 {
-    let fmt_str = format!("AUXON_TASK_ENTER::task={task},priority={priority},dispatcher={dispatcher},arg_cnt={arg_cnt},queue_index={{=u8}}");
+    let fmt_str = format!("AUXON_TASK_ENTER::task={task},priority={priority},dispatcher={dispatcher},arg_cnt={arg_cnt}");
     quote!(
-        defmt::trace!(#fmt_str, index);
+        defmt::trace!(#fmt_str);
     )
 }
 
@@ -65,10 +65,10 @@ pub fn tp_task_spawn(
     arg_cnt: u8,
 ) -> TokenStream2 {
     let fmt_str = format!(
-        "AUXON_TASK_SPAWN::task={task},interrupt={{=u16}},isr={interrupt},arg_cnt={arg_cnt},queue_index={{=u8}}"
+        "AUXON_TASK_SPAWN::task={task},interrupt={{=u16}},isr={interrupt},arg_cnt={arg_cnt}"
     );
     quote!(
-        defmt::trace!(#fmt_str, #device::#enum_::#interrupt as u16, index);
+        defmt::trace!(#fmt_str, #device::#enum_::#interrupt as u16);
     )
 }
 
@@ -95,11 +95,9 @@ pub fn tp_task_spawn_after(task: &Ident) -> TokenStream2 {
 }
 
 pub fn tp_task_spawn_at(task: &Ident, arg_cnt: u8) -> TokenStream2 {
-    let fmt_str = format!(
-        "AUXON_TASK_SPAWN_AT::task={task},instant={{=u64}},arg_cnt={arg_cnt},queue_index={{=u8}}"
-    );
+    let fmt_str = format!("AUXON_TASK_SPAWN_AT::task={task},instant={{=u64}},arg_cnt={arg_cnt}");
     quote!(
-        defmt::trace!(#fmt_str, instant.ticks(), index);
+        defmt::trace!(#fmt_str, instant.ticks());
     )
 }
 
