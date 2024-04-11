@@ -20,9 +20,9 @@ pub fn tp_idle_task_enter(task: &Ident) -> TokenStream2 {
 
 pub fn tp_interrupt_enter(device: &Path, priority: u8, interrupt: &Ident) -> TokenStream2 {
     let fmt_str =
-        format!("AUXON_INTERRUPT_ENTER::interrupt={{=u32}},priority={priority},isr={interrupt}");
+        format!("AUXON_INTERRUPT_ENTER::interrupt={{=u16}},priority={priority},isr={interrupt}");
     quote!(
-        defmt::trace!(#fmt_str, #device::Interrupt::#interrupt as u32);
+        defmt::trace!(#fmt_str, #device::Interrupt::#interrupt as u16);
     )
 }
 
@@ -65,10 +65,10 @@ pub fn tp_task_spawn(
     arg_cnt: u8,
 ) -> TokenStream2 {
     let fmt_str = format!(
-        "AUXON_TASK_SPAWN::task={task},interrupt={{=u32}},isr={interrupt},arg_cnt={arg_cnt},queue_index={{=u8}}"
+        "AUXON_TASK_SPAWN::task={task},interrupt={{=u16}},isr={interrupt},arg_cnt={arg_cnt},queue_index={{=u8}}"
     );
     quote!(
-        defmt::trace!(#fmt_str, #device::#enum_::#interrupt as u32, index);
+        defmt::trace!(#fmt_str, #device::#enum_::#interrupt as u16, index);
     )
 }
 
@@ -80,10 +80,10 @@ pub fn tp_task_spawn_failed(
     arg_cnt: u8,
 ) -> TokenStream2 {
     let fmt_str = format!(
-        "AUXON_TASK_SPAWN_FAILED::task={task},interrupt={{=u32}},isr={interrupt},arg_cnt={arg_cnt}"
+        "AUXON_TASK_SPAWN_FAILED::task={task},interrupt={{=u16}},isr={interrupt},arg_cnt={arg_cnt}"
     );
     quote!(
-        defmt::trace!(#fmt_str, #device::#enum_::#interrupt as u32);
+        defmt::trace!(#fmt_str, #device::#enum_::#interrupt as u16);
     )
 }
 
